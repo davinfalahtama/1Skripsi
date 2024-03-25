@@ -125,7 +125,7 @@ def main():
         'About': "# This is a header. This is an extremely cool app!"
     })
     st.header(':sparkles: Mau nanya tentang PMB ITPLN :question:', divider='rainbow')
-    st.subheader("Hallo, aku NasiGoreng. Temukan informasi seputar PMB ITPLN bersamaku.")
+    st.subheader("Hallo, aku Elena. Temukan informasi seputar PMB ITPLN bersamaku.")
     with st.chat_message("assistant"):
                 st.markdown("Kamu mau nanya apa?")
     
