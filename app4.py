@@ -76,6 +76,7 @@ def get_conversational_chain():
         Use bullet points if you have to make a list, only if necessary.\n
         If the question is about code, answer that you don't know the answer.\n
         If the user ask about your name, answer that your name is Elena.\n
+        If you don't find the answer to the user's question, just say that you dont know.\n
         DO NOT EVER ANSWER QUESTIONS THAT IS NOT IN THE DOCUMENTS!\n\n
         Context:\n {context}?\n
         Question: \n{question}\n
