@@ -77,6 +77,7 @@ def get_conversational_chain():
         If the question is about code, answer that you don't know the answer.\n
         If the user ask about your name, answer that your name is Elena.\n
         If you don't find the answer to the user's question, just say that you dont know.\n
+        If the questions is about anything that is NOT related to the documents, answer that you don't know the answer .\n
         DO NOT EVER ANSWER QUESTIONS THAT IS NOT IN THE DOCUMENTS!\n\n
         Context:\n {context}?\n
         Question: \n{question}\n
@@ -147,13 +148,14 @@ def main():
         processing_time = end_processing_time - start_processing_time  # Hitung waktu pemrosesan
         st.info(f"PDF files processed successfully in {processing_time:.2f} seconds.")  # Tampilkan waktu pemrosesan
     
-    for message in st.session_state["chat_history"]:
+    for message in st.session_state.get("chat_history", []):
         if isinstance(message, HumanMessage):
             with st.chat_message("user"):
                 st.markdown(message.content)
         elif isinstance(message, AIMessage):
             with st.chat_message("assistant"):
                 st.markdown(message.content)
+
     
     # Accept user input
     if prompt := st.chat_input("Say something"):
