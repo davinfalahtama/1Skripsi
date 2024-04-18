@@ -33,10 +33,11 @@ def get_text_from_urls(urls):
             text += doc.page_content + "\n\n"
     return text
 
+def format_docs(docs):
+    return "\n\n".join(doc.page_content for doc in docs)
+
+
 def get_text_chunks(text):
-    if text is None:
-        return []
-    
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=10000, chunk_overlap=1000)
     chunks = text_splitter.split_text(text)
     return chunks

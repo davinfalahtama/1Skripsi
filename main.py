@@ -1,5 +1,4 @@
 import streamlit as st
-from PyPDF2 import PdfReader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 import os
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
@@ -16,20 +15,32 @@ import pandas as pd
 from langchain_core.messages import AIMessage, HumanMessage
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnablePassthrough
+from langchain_community.document_loaders.recursive_url_loader import RecursiveUrlLoader
+from bs4 import BeautifulSoup as Soup
 
 load_dotenv()
 os.getenv("GOOGLE_API_KEY")
 genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 
-def get_pdf_text(pdf_path):
+def get_pdf_text(urls):
+    # text = ""
+    # for file_path in pdf_path:
+    #     if file_path.endswith('.pdf'):
+    #         # Process PDF file
+    #         pdf_reader = PdfReader(file_path)
+    #         for page in pdf_reader.pages:
+    #             text += page.extract_text()
+    
     text = ""
-    for file_path in pdf_path:
-        if file_path.endswith('.pdf'):
-            # Process PDF file
-            pdf_reader = PdfReader(file_path)
-            for page in pdf_reader.pages:
-                text += page.extract_text()
+    for url in urls:
+        loader = RecursiveUrlLoader(
+            url=url, max_depth=2, extractor=lambda x: Soup(x, "html.parser").text
+        )
+        docs = loader.load()
+        for doc in docs:
+            text += doc.page_content + "\n\n"
     return text
+
 
 def get_text_chunks(text):
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=10000, chunk_overlap=1000)
@@ -134,13 +145,13 @@ def main():
     if "chat_history" not in st.session_state:
         st.session_state["chat_history"] = []
     
-    docs_path = "docs"
-    pdf_docs = [os.path.join(docs_path, filename) for filename in os.listdir(docs_path) if filename.endswith('.pdf')]
+    # docs_path = "docs"
+    # pdf_docs = [os.path.join(docs_path, filename) for filename in os.listdir(docs_path) if filename.endswith('.pdf')]
     
     with st.spinner("Processing..."):
         start_processing_time = time.time()  # Catat waktu awal pemrosesan
         
-        raw_text = get_pdf_text(pdf_docs)
+        raw_text = get_pdf_text(["https://python.langchain.com/docs/integrations/document_loaders/recursive_url/"])
         text_chunks = get_text_chunks(raw_text)
         get_vector_store(text_chunks)
         
