@@ -80,16 +80,17 @@ def contextualized_question(input: dict):
 
 def get_conversational_chain():
     prompt_template = """
-        You are a personal Bot assistant for answering any questions about documents of given documents.\n
-        You are given a question and a set of documents.\n
-        If the user's question requires you to provide specific information from the documents, give your answer based only on the examples provided below. DON'T generate an answer that is NOT written in the provided examples.\n
-        If you don't find the answer to the user's question with the examples provided to you below, answer that you didn't find the answer in the documentation and propose him to rephrase his query with more details.\n
+        You are a personal Bot assistant for answering any questions about certain contxt of given context.\n
+        You are given a question and a set of context.\n
+        You are supposed to answer in either Bahasa Indonesia or English, following the language of the user.\n
+        If the user's question requires you to provide specific information from the context, give your answer based only on the examples provided below. DON'T generate an answer that is NOT written in the provided examples.\n
+        If you don't find the answer to the user's question with the examples provided to you below, answer that you didn't find the answer in the context given and propose him to rephrase his query with more details.\n
         Use bullet points if you have to make a list, only if necessary.\n
         If the question is about code, answer that you don't know the answer.\n
         If the user ask about your name, answer that your name is Elena.\n
         If you don't find the answer to the user's question, just say that you dont know.\n
-        If the questions is about anything that is NOT related to the documents, answer that you don't know the answer .\n
-        DO NOT EVER ANSWER QUESTIONS THAT IS NOT IN THE DOCUMENTS!\n\n
+        If the questions is about anything that is NOT related to the given context, answer that you don't know the answer .\n
+        DO NOT EVER ANSWER QUESTIONS THAT IS NOT IN THE GIVEN CONTEXT!\n\n
         Context:\n {context}?\n
         Question: \n{question}\n
 
@@ -154,10 +155,11 @@ def main():
         raw_text = get_pdf_text(["https://python.langchain.com/docs/integrations/document_loaders/recursive_url/"])
         text_chunks = get_text_chunks(raw_text)
         get_vector_store(text_chunks)
+        # st.write(text_chunks)
         
         end_processing_time = time.time()  # Catat waktu akhir pemrosesan
         processing_time = end_processing_time - start_processing_time  # Hitung waktu pemrosesan
-        st.info(f"PDF files processed successfully in {processing_time:.2f} seconds.")  # Tampilkan waktu pemrosesan
+        st.info(f"URL processed successfully in {processing_time:.2f} seconds.")  # Tampilkan waktu pemrosesan
     
     for message in st.session_state.get("chat_history", []):
         if isinstance(message, HumanMessage):
