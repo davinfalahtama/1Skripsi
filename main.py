@@ -154,7 +154,7 @@ def main():
     with st.spinner("Processing..."):
         start_processing_time = time.time()  # Catat waktu awal pemrosesan
         
-        raw_text = get_pdf_text(["https://python.langchain.com/docs/integrations/document_loaders/recursive_url/"])
+        raw_text = get_pdf_text(["https://www.python.org/downloads/release/python-3123/"])
         text_chunks = get_text_chunks(raw_text)
         get_vector_store(text_chunks)
         st.write(text_chunks)
