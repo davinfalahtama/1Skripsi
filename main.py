@@ -9,8 +9,6 @@ from langchain.chains.question_answering import load_qa_chain
 from langchain.prompts import PromptTemplate
 from dotenv import load_dotenv
 import random
-import requests
-import io
 import time
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 import pandas as pd
@@ -42,7 +40,6 @@ def get_pdf_text(urls):
         for doc in docs:
             text += doc.page_content + "\n\n"
     return text
-
 
 def get_text_chunks(text):
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=10000, chunk_overlap=1000)
@@ -154,7 +151,7 @@ def main():
     with st.spinner("Processing..."):
         start_processing_time = time.time()  # Catat waktu awal pemrosesan
         
-        raw_text = get_pdf_text(["https://www.python.org/downloads/release/python-3123/"])
+        raw_text = get_pdf_text(["https://python.langchain.com/docs/integrations/document_loaders/recursive_url/"])
         text_chunks = get_text_chunks(raw_text)
         get_vector_store(text_chunks)
         st.write(text_chunks)
