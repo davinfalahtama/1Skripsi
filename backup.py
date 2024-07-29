@@ -22,7 +22,15 @@ load_dotenv()
 os.getenv("GOOGLE_API_KEY")
 genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 
-def get_text_from_urls(urls):
+def get_pdf_text(urls):
+    # text = ""
+    # for file_path in pdf_path:
+    #     if file_path.endswith('.pdf'):
+    #         # Process PDF file
+    #         pdf_reader = PdfReader(file_path)
+    #         for page in pdf_reader.pages:
+    #             text += page.extract_text()
+    
     text = ""
     for url in urls:
         loader = RecursiveUrlLoader(
@@ -33,9 +41,6 @@ def get_text_from_urls(urls):
             text += doc.page_content + "\n\n"
     return text
 
-def format_docs(docs):
-    return "\n\n".join(doc.page_content for doc in docs)
-
 def get_text_chunks(text):
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=10000, chunk_overlap=1000)
     chunks = text_splitter.split_text(text)
@@ -45,6 +50,9 @@ def get_vector_store(text_chunks):
     embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
     vector_store = FAISS.from_texts(text_chunks, embedding=embeddings)
     vector_store.save_local("faiss_index")
+
+def format_docs(docs):
+    return "\n\n".join(doc.page_content for doc in docs)
 
 def contextualize_system_prompt():
     contextualize_q_system_prompt = """Given a chat history and the latest user question \
@@ -58,7 +66,7 @@ def contextualize_system_prompt():
             ("human", "{question}"),
         ]
     )
-    model = ChatGoogleGenerativeAI(model="gemini-pro", temperature=0.5,convert_system_message_to_human=True)
+    model = ChatGoogleGenerativeAI(model="gemini-pro", temperature=0.1,convert_system_message_to_human=True)
     contextualize_q_chain = contextualize_q_prompt | model | StrOutputParser()
     return contextualize_q_chain
 
@@ -71,22 +79,28 @@ def contextualized_question(input: dict):
 
 def get_conversational_chain():
     prompt_template = """
-        You are a personal Bot assistant for answering any questions about documents of given documents.\n
-        You are given a question and a set of documents.\n
-        If the user's question requires you to provide specific information from the documents, give your answer based only on the examples provided below. DON'T generate an answer that is NOT written in the provided examples.\n
-        If you don't find the answer to the user's question with the examples provided to you below, answer that you didn't find the answer in the documentation and propose him to rephrase his query with more details.\n
+        You are a personal Bot assistant for answering any questions about certain contxt of given context.\n
+        You are given a question and a set of context.\n
+        You are supposed to answer in either Bahasa Indonesia or English, following the language of the user.\n
+        If the user's question requires you to provide specific information from the context, give your answer based only on the examples provided below. DON'T generate an answer that is NOT written in the provided examples.\n
+        If you don't find the answer to the user's question with the examples provided to you below, answer that you didn't find the answer in the context given and propose him to rephrase his query with more details.\n
         Use bullet points if you have to make a list, only if necessary.\n
         If the question is about code, answer that you don't know the answer.\n
+        If there are links avaliable, then u can proceed to access it.\n
         If the user ask about your name, answer that your name is Elena.\n
-        If the questions is about anything that is NOT related to the documents, answer that you don't know the answer .\n
-        DO NOT EVER ANSWER QUESTIONS THAT IS NOT IN THE DOCUMENTS!\n\n
+        If you don't find the answer to the user's question, just say that you dont know.\nc
+        If the questions is about anything that is NOT related to the given context, answer that you don't know the answer .\n
+        if there'is any inappropriate question, just say that you can't answer the question. \n
+        if td. \n
+        DO NOT EVER ANSWER QUESTIONS THAT IS NOT IN THE GIVEN CONTEXT!\n\n
+        
         Context:\n {context}?\n
         Question: \n{question}\n
 
         Answer:
     """
 
-    model = ChatGoogleGenerativeAI(model="gemini-pro", temperature=0.5,convert_system_message_to_human=True)
+    model = ChatGoogleGenerativeAI(model="gemini-pro", temperature=0.2,convert_system_message_to_human=True)
 
     embeddings = GoogleGenerativeAIEmbeddings(model = "models/embedding-001")
     
@@ -104,7 +118,7 @@ def get_conversational_chain():
 
     rag_chain = (
         RunnablePassthrough.assign(
-            context=contextualized_question | retriever | get_text_chunks
+            context=contextualized_question | retriever | format_docs
         )
         | qa_prompt
         | model
@@ -141,7 +155,7 @@ def main():
     with st.spinner("Processing..."):
         start_processing_time = time.time()  # Catat waktu awal pemrosesan
         
-        raw_text = get_text_from_urls(["https://python.langchain.com/docs/integrations/document_loaders/recursive_url/"])
+        raw_text = get_pdf_text(["https://medium.com/the-ai-forum/build-a-reliable-rag-agent-using-langgraph-2694d55995cd"])
         text_chunks = get_text_chunks(raw_text)
         get_vector_store(text_chunks)
         st.write(text_chunks)

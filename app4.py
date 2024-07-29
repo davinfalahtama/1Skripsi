@@ -144,6 +144,7 @@ def main():
         raw_text = get_pdf_text(pdf_docs)
         text_chunks = get_text_chunks(raw_text)
         get_vector_store(text_chunks)
+        st.write(text_chunks)
         
         end_processing_time = time.time()  # Catat waktu akhir pemrosesan
         processing_time = end_processing_time - start_processing_time  # Hitung waktu pemrosesan

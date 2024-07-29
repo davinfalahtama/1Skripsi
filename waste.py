@@ -2,10 +2,8 @@ import streamlit as st
 from PyPDF2 import PdfReader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 import os
-from langchain_google_genai import GoogleGenerativeAIEmbeddings
-import google.generativeai as genai
+from langchain.embeddings import HuggingFaceEmbeddings
 from langchain.vectorstores import FAISS
-from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.chains.question_answering import load_qa_chain
 from langchain.prompts import PromptTemplate
 from dotenv import load_dotenv
@@ -16,10 +14,9 @@ import pandas as pd
 from langchain_core.messages import AIMessage, HumanMessage
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnablePassthrough
+from transformers import pipeline
 
 load_dotenv()
-os.getenv("GOOGLE_API_KEY")
-genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 
 def get_pdf_text(pdf_docs):
     text = ""
@@ -41,9 +38,8 @@ def get_text_chunks(text):
     chunks = text_splitter.split_text(text)
     return chunks
 
-
 def get_vector_store(text_chunks):
-    embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
+    embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
     vector_store = FAISS.from_texts(text_chunks, embedding=embeddings)
     vector_store.save_local("faiss_index")
 
@@ -62,7 +58,7 @@ def contextualize_system_prompt():
             ("human", "{question}"),
         ]
     )
-    model = ChatGoogleGenerativeAI(model="gemini-pro", temperature=0.5,convert_system_message_to_human=True)
+    model = pipeline("text2text-generation", model="aisingapore/sea-lion-7b")
     contextualize_q_chain = contextualize_q_prompt | model | StrOutputParser()
     return contextualize_q_chain
 
@@ -75,7 +71,7 @@ def contextualized_question(input: dict):
 
 def get_conversational_chain():
     prompt_template = """
-        You are a personal Bot assistant for answering any questions about certain contxt of given context.\n
+        You are a personal Bot assistant for answering any questions about certain context of given context.\n
         You are given a question and a set of context.\n
         You are supposed to answer in either Bahasa Indonesia or English, following the language of the user.\n
         If the user's question requires you to provide specific information from the context, give your answer based only on the examples provided below. DON'T generate an answer that is NOT written in the provided examples.\n
@@ -89,14 +85,14 @@ def get_conversational_chain():
         Context:\n {context}?\n
         Question: \n{question}\n
 
-        Answer:Answer the question as detailed as possible from the provided context, make sure to provide all the details\n\n
+        Answer:
     """
 
-    model = ChatGoogleGenerativeAI(model="gemini-pro", temperature=0.5,convert_system_message_to_human=True)
+    model = pipeline("text-generation", model="aisingapore/sea-lion-7b")
 
-    embeddings = GoogleGenerativeAIEmbeddings(model = "models/embedding-001")
+    embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
     
-    new_db = FAISS.load_local("faiss_index", embeddings,allow_dangerous_deserialization=True)
+    new_db = FAISS.load_local("faiss_index", embeddings, allow_dangerous_deserialization=True)
 
     retriever = new_db.as_retriever(search_type="similarity", search_kwargs={"k": 6})
 

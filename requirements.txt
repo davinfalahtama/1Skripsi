@@ -7,3 +7,7 @@ chromaDB
 faiss-cpu
 langchain_google_genai
 beautifulsoup4
+transformers
+pip
+langchain-community
+transformers
