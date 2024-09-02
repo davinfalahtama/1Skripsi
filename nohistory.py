@@ -27,19 +27,9 @@ def get_pdf_text(pdf_path):
     text = ""
     for file_path in pdf_path:
         if file_path.endswith('.pdf'):
-            # Process PDF file
             pdf_reader = PdfReader(file_path)
             for page in pdf_reader.pages:
                 text += page.extract_text()
-    
-    # text = "" 
-    # for url in urls:
-    #     loader = RecursiveUrlLoader(
-    #         url=url, max_depth=2, extractor=lambda x: Soup(x, "html.parser").text
-    #     )
-    #     docs = loader.load()
-    #     for doc in docs:
-    #         text += doc.page_content + "\n\n"
     return text
 
 def get_text_chunks(text):
@@ -55,32 +45,9 @@ def get_vector_store(text_chunks):
 def format_docs(docs):
     return "\n\n".join(doc.page_content for doc in docs)
 
-def contextualize_system_prompt():
-    contextualize_q_system_prompt = """Given a chat history and the latest user question \
-    which might reference context in the chat history, formulate a standalone question \
-    which can be understood without the chat history. Do NOT answer the question, \
-    just reformulate it if needed and otherwise return it as is."""
-    contextualize_q_prompt = ChatPromptTemplate.from_messages(
-        [
-            ("system", contextualize_q_system_prompt),
-            MessagesPlaceholder(variable_name="chat_history"),
-            ("human", "{question}"),
-        ]
-    )
-    model = ChatGoogleGenerativeAI(model="gemini-pro", temperature=0.5, convert_system_message_to_human=True)
-    contextualize_q_chain = contextualize_q_prompt | model | StrOutputParser()
-    return contextualize_q_chain
-
-def contextualized_question(input: dict):
-    if input.get("chat_history"):
-        contextualize_q_chain = contextualize_system_prompt()
-        return contextualize_q_chain
-    else:
-        return input["question"]
-
 def get_conversational_chain():
     prompt_template = """ System:
-        You are a personal Bot assistant for answering any questions about certain contxt of given context.\n
+        You are a personal Bot assistant for answering any questions about certain context of given context.\n
         You are given a question and a set of context.\n 
         You are supposed to answer in either Bahasa Indonesia or English, following the language of the user.\n
         If the user's question requires you to provide specific information from the context, give your answer based only on the examples provided below. 
@@ -89,14 +56,14 @@ def get_conversational_chain():
         answer that you didn't find the answer in the context given and propose him to rephrase his query with more details.\n
         Use bullet points if you have to make a list, only if necessary.\n
         If the question is about code, answer that you don't know the answer.\n
-        If there are links avaliable, then u can proceed to access it.\n
-        If the user ask about your name, answer that your name is Elena.\n
-        If you don't find the answer to the user's question, just say that you dont know.\n
-        If the questions is about anything that is NOT related to the given context, answer that you don't know the answer .\n
-        if there'is any inappropriate question, just say that you can't answer the question. \n
-        please give the references from which line or paragraph regarding your answer in the context given. \n
-        If the user ask you about generating images, sound. state that u cant do that, you can only generate text as an output. \n
-        DO NOT EVER ANSWER QUESTIONS THAT IS NOT IN THE GIVEN CONTEXT!\n\n
+        If there are links available, then you can proceed to access it.\n
+        If the user asks about your name, answer that your name is Elena.\n
+        If you don't find the answer to the user's question, just say that you don't know.\n
+        If the question is about anything that is NOT related to the given context, answer that you don't know the answer.\n
+        If there is any inappropriate question, just say that you can't answer the question.\n
+        Please give the references from which line or paragraph regarding your answer in the context given.\n
+        If the user asks you about generating images or sound, state that you can't do that, you can only generate text as an output.\n
+        DO NOT EVER ANSWER QUESTIONS THAT ARE NOT IN THE GIVEN CONTEXT!\n\n
 
         Context:\n {context}?\n
         Question: \n{question}\n
@@ -104,25 +71,21 @@ def get_conversational_chain():
         Answer:
     """
 
-    model = ChatGoogleGenerativeAI(model="gemini-pro", temperature=0.5,convert_system_message_to_human=True)
-
-    embeddings = GoogleGenerativeAIEmbeddings(model = "models/embedding-001")
-    
-    new_db = FAISS.load_local("faiss_index", embeddings,allow_dangerous_deserialization=True)
-
+    model = ChatGoogleGenerativeAI(model="gemini-pro", temperature=0.5, convert_system_message_to_human=True)
+    embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
+    new_db = FAISS.load_local("faiss_index", embeddings, allow_dangerous_deserialization=True)
     retriever = new_db.as_retriever(search_type="similarity", search_kwargs={"k": 6})
 
     qa_prompt = ChatPromptTemplate.from_messages(
         [
             ("system", prompt_template),
-            MessagesPlaceholder(variable_name="chat_history"),
             ("human", "{question}"),
         ]
     )
 
     rag_chain = (
         RunnablePassthrough.assign(
-            context=contextualized_question | retriever | format_docs
+            context=retriever | format_docs
         )
         | qa_prompt
         | model
@@ -138,7 +101,6 @@ def main():
     st.set_page_config(
     page_title="Chat Documents",
     page_icon="🧊",
-   # layout="wide",
     initial_sidebar_state="expanded",
     menu_items={
         'Get Help': 'https://www.extremelycoolapp.com/help',
@@ -148,55 +110,38 @@ def main():
     st.header(':sparkles: Mau nanya tentang PMB ITPLN :question:', divider='rainbow')
     st.subheader("Hallo, aku Elena. Temukan informasi seputar PMB ITPLN bersamaku.")
     with st.chat_message("assistant"):
-                st.write_stream(response_generator("Kamu mau nanya apa?"))
-    
-    if "chat_history" not in st.session_state:
-        st.session_state["chat_history"] = []
-    
+        st.write_stream(response_generator("Kamu mau nanya apa?"))
+
     docs_path = "docs"
     pdf_docs = [os.path.join(docs_path, filename) for filename in os.listdir(docs_path) if filename.endswith('.pdf')]
     
     with st.spinner("Processing..."):
-        start_processing_time = time.time()  # Catat waktu awal pemrosesan
+        start_processing_time = time.time()
         
         raw_text = get_pdf_text(pdf_docs)
         text_chunks = get_text_chunks(raw_text)
         get_vector_store(text_chunks)
-        # st.write(text_chunks)
         
-        end_processing_time = time.time()  # Catat waktu akhir pemrosesan
-        processing_time = end_processing_time - start_processing_time  # Hitung waktu pemrosesan
-        st.info(f"PDF processed successfully in {processing_time:.2f} seconds.")  # Tampilkan waktu pemrosesan
-    
-    for message in st.session_state.get("chat_history", []):
-        if isinstance(message, HumanMessage):
-            with st.chat_message("user"):
-                st.markdown(message.content)
-        elif isinstance(message, AIMessage):
-            with st.chat_message("assistant"):
-                st.markdown(message.content)
-
+        end_processing_time = time.time()
+        processing_time = end_processing_time - start_processing_time
+        st.info(f"PDF processed successfully in {processing_time:.2f} seconds.")
     
     # Accept user input
     if prompt := st.chat_input("Say something"):
         with st.chat_message("user"):
             st.markdown(prompt)
         
-        start_inference_time = time.time()  # Catat waktu awal inferensi
+        start_inference_time = time.time()
         
         rag_chain = get_conversational_chain()
-        ai_msg = rag_chain.invoke({"question": prompt, "chat_history": st.session_state["chat_history"]})
+        ai_msg = rag_chain.invoke({"question": prompt})
 
-        end_inference_time = time.time()  # Catat waktu akhir inferensi
-        inference_time = end_inference_time - start_inference_time  # Hitung waktu inferensi
+        end_inference_time = time.time()
+        inference_time = end_inference_time - start_inference_time
         
         with st.chat_message("assistant"):
-            # Menampilkan markdown langsung
-            # response = st.write_stream(response_generator(ai_msg.content))
             st.markdown(ai_msg.content)
-            st.info(f"Inference time: {inference_time:.2f} seconds.")  # Tampilkan waktu inferensi
-        
-        st.session_state["chat_history"].extend([HumanMessage(content=prompt), ai_msg])
+            st.info(f"Inference time: {inference_time:.2f} seconds.")
 
 if __name__ == "__main__":
     main()

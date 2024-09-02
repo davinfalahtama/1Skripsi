@@ -1,0 +1,6 @@
+buat skripsi chatbot pmb itpln
+
+buat jadi 1 folder
+insialisasi lib: pip install -r requirements.txt
+cara running: streamlit run (nama file).py
+ganti/add docs di folder docs
